@@ -4,6 +4,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import {
   Container,
   TextField,
@@ -18,6 +20,12 @@ import {
 } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DateTimePicker } from '@mui/x-date-pickers';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+dayjs.tz.setDefault('Asia/Kolkata');
+axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
 
 function CustomerForm() {
   const [name, setName] = useState('');
@@ -39,15 +47,18 @@ function CustomerForm() {
     try {
       const reservationTimeToSend =
         reservationTimeOption === 'now'
-          ? dayjs().toISOString()
+          ? dayjs().tz('Asia/Kolkata').toISOString()
           : reservationTime.toISOString();
 
-      const response = await axios.post('http://localhost:5000/api/queue', {
+      const response = await axios.post('https://unicorn-first-oyster.ngrok-free.app/api/queue', {
         name: name,
         party_size: parseInt(partySize),
         contact_number: contactNumber,
         reservation_time: reservationTimeToSend,
-      });
+      }, {
+  headers: {
+    'ngrok-skip-browser-warning': 'true',
+  },});
 
       setMessage(response.data.message);
       setEstimatedWaitTime(response.data.estimated_wait_time);

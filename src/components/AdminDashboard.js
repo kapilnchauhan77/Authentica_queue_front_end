@@ -17,6 +17,16 @@ import {
   Stack,
   Box,
 } from '@mui/material';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+// Extend Day.js with plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// Set default time zone to Asia/Kolkata (IST)
+dayjs.tz.setDefault('Asia/Kolkata');
 
 function AdminDashboard() {
   const [queue, setQueue] = useState([]);
@@ -33,7 +43,11 @@ function AdminDashboard() {
 
   const fetchQueue = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/admin/queue');
+      const response = await axios.get('https://unicorn-first-oyster.ngrok-free.app/api/admin/queue', {
+  headers: {
+    'ngrok-skip-browser-warning': 'true',
+  },});
+      console.log(response)
       setQueue(response.data);
     } catch (error) {
       console.error('Error fetching queue', error);
@@ -42,7 +56,10 @@ function AdminDashboard() {
 
   const fetchTables = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/admin/tables');
+      const response = await axios.get('https://unicorn-first-oyster.ngrok-free.app/api/admin/tables', {
+  headers: {
+    'ngrok-skip-browser-warning': 'true',
+  },});
       setTables(response.data);
     } catch (error) {
       console.error('Error fetching tables', error);
@@ -56,10 +73,13 @@ function AdminDashboard() {
     }
 
     try {
-      const response = await axios.post('http://localhost:5000/api/admin/allocate_table', {
+      const response = await axios.post('https://unicorn-first-oyster.ngrok-free.app/api/admin/allocate_table', {
         customer_id: parseInt(selectedCustomer),
         table_id: parseInt(selectedTable),
-      });
+      }, {
+  headers: {
+    'ngrok-skip-browser-warning': 'true',
+  },});
       setMessage(response.data.message);
       setSelectedCustomer('');
       setSelectedTable('');
@@ -77,9 +97,12 @@ function AdminDashboard() {
     }
 
     try {
-      const response = await axios.post('http://localhost:5000/api/admin/tables', {
+      const response = await axios.post('https://unicorn-first-oyster.ngrok-free.app/api/admin/tables', {
         capacity: parseInt(newTableCapacity),
-      });
+      }, {
+  headers: {
+    'ngrok-skip-browser-warning': 'true',
+  },});
       setMessage(response.data.message);
       setNewTableCapacity('');
       fetchTables(); // Refresh the table list
@@ -90,9 +113,12 @@ function AdminDashboard() {
 
   const updateTableStatus = async (tableId, newStatus) => {
     try {
-      const response = await axios.put(`http://localhost:5000/api/admin/tables/${tableId}`, {
+      const response = await axios.put(`https://unicorn-first-oyster.ngrok-free.app/api/admin/tables/${tableId}`, {
         status: newStatus,
-      });
+      }, {
+  headers: {
+    'ngrok-skip-browser-warning': 'true',
+  },});
       setMessage(response.data.message);
       fetchTables(); // Refresh the table statuses
     } catch (error) {
