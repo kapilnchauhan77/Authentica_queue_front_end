@@ -6,9 +6,11 @@ import axios from 'axios';
 import {
   Button,
   TextField,
+  Checkbox,
   Radio,
   RadioGroup,
   FormControlLabel,
+  FormGroup,
   FormControl,
   FormLabel,
   Typography,
@@ -16,6 +18,11 @@ import {
   Paper,
   Stack,
   Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -30,11 +37,18 @@ dayjs.tz.setDefault('Asia/Kolkata');
 
 function AdminDashboard() {
   const [queue, setQueue] = useState([]);
+  const [selectedTables, setSelectedTables] = useState([]);
   const [tables, setTables] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState('');
-  const [selectedTable, setSelectedTable] = useState('');
   const [message, setMessage] = useState('');
   const [newTableCapacity, setNewTableCapacity] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [tableToDelete, setTableToDelete] = useState(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [tableToEdit, setTableToEdit] = useState(null);
+  const [editTableName, setEditTableName] = useState('');
+  const [editTableCapacity, setEditTableCapacity] = useState('');
+  const [newTableName, setNewTableName] = useState('');
 
   useEffect(() => {
     fetchQueue();
@@ -54,6 +68,77 @@ function AdminDashboard() {
     }
   };
 
+  const handleTableSelection = (event, tableId) => {
+    const tableIdStr = String(tableId);
+    if (event.target.checked) {
+      setSelectedTables([...selectedTables, tableIdStr]);
+    } else {
+      setSelectedTables(selectedTables.filter((id) => id !== tableIdStr));
+    }
+  };
+
+  const handleEditTable = (table) => {
+    setTableToEdit(table);
+    setEditTableName(table.name || '');
+    setEditTableCapacity(table.capacity);
+    setEditDialogOpen(true);
+  };
+  
+  const confirmEditTable = async () => {
+    if (!editTableCapacity) {
+      setMessage('Please enter a table capacity.');
+      return;
+    }
+  
+    try {
+      await axios.put(`https://your-ngrok-url.ngrok.io/api/admin/tables/${tableToEdit.id}`, {
+        name: editTableName,
+        capacity: parseInt(editTableCapacity),
+      }, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+        },
+      });
+      setMessage('Table updated successfully.');
+      setEditDialogOpen(false);
+      setTableToEdit(null);
+      fetchTables(); // Refresh the table list
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'An error occurred.');
+      setEditDialogOpen(false);
+      setTableToEdit(null);
+    }
+  };
+  
+  const cancelEditTable = () => {
+    setEditDialogOpen(false);
+    setTableToEdit(null);
+  };
+
+  const allocateTable = async () => {
+    if (!selectedCustomer || selectedTables.length === 0) {
+      setMessage('Please select a customer and at least one table.');
+      return;
+    }
+
+    try {
+      const response = await axios.post('https://unicorn-first-oyster.ngrok-free.app/api/admin/allocate_table', {
+        customer_id: parseInt(selectedCustomer),
+        table_ids: selectedTables.map((id) => parseInt(id)),
+      }, {
+  headers: {
+    'ngrok-skip-browser-warning': 'true',
+  },});
+      setMessage(response.data.message);
+      setSelectedCustomer('');
+      setSelectedTables([]);
+      fetchQueue(); // Refresh the queue
+      fetchTables(); // Refresh the table statuses
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'An error occurred.');
+    }
+  };
+
   const fetchTables = async () => {
     try {
       const response = await axios.get('https://unicorn-first-oyster.ngrok-free.app/api/admin/tables', {
@@ -66,29 +151,6 @@ function AdminDashboard() {
     }
   };
 
-  const allocateTable = async () => {
-    if (!selectedCustomer || !selectedTable) {
-      setMessage('Please select a customer and a table.');
-      return;
-    }
-
-    try {
-      const response = await axios.post('https://unicorn-first-oyster.ngrok-free.app/api/admin/allocate_table', {
-        customer_id: parseInt(selectedCustomer),
-        table_id: parseInt(selectedTable),
-      }, {
-  headers: {
-    'ngrok-skip-browser-warning': 'true',
-  },});
-      setMessage(response.data.message);
-      setSelectedCustomer('');
-      setSelectedTable('');
-      fetchQueue(); // Refresh the queue
-      fetchTables(); // Refresh the table statuses
-    } catch (error) {
-      setMessage(error.response?.data?.error || 'An error occurred.');
-    }
-  };
 
   const addTable = async () => {
     if (!newTableCapacity) {
@@ -104,6 +166,7 @@ function AdminDashboard() {
     'ngrok-skip-browser-warning': 'true',
   },});
       setMessage(response.data.message);
+      setNewTableName('');
       setNewTableCapacity('');
       fetchTables(); // Refresh the table list
     } catch (error) {
@@ -124,6 +187,34 @@ function AdminDashboard() {
     } catch (error) {
       setMessage(error.response?.data?.error || 'An error occurred.');
     }
+  };
+
+  const handleDeleteTable = (tableId) => {
+    setTableToDelete(tableId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteTable = async () => {
+    try {
+      await axios.delete(`https://your-ngrok-url.ngrok.io/api/admin/tables/${tableToDelete}`, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+        },
+      });
+      setMessage('Table deleted successfully.');
+      setDeleteDialogOpen(false);
+      setTableToDelete(null);
+      fetchTables(); // Refresh the table list
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'An error occurred.');
+      setDeleteDialogOpen(false);
+      setTableToDelete(null);
+    }
+  };
+
+  const cancelDeleteTable = () => {
+    setDeleteDialogOpen(false);
+    setTableToDelete(null);
   };
 
   return (
@@ -167,20 +258,20 @@ function AdminDashboard() {
         <Paper elevation={3} style={{ padding: 16 }}>
           <FormControl component="fieldset">
             <FormLabel component="legend">Tables</FormLabel>
-            <RadioGroup
-              aria-label="selectedTable"
-              name="selectedTable"
-              value={selectedTable}
-              onChange={(e) => setSelectedTable(e.target.value)}
-            >
+            <FormGroup>
               {tables.map((table) => (
                 <Box key={table.id} display="flex" alignItems="center">
                   <FormControlLabel
-                    value={String(table.id)}
-                    control={<Radio />}
+                    control={
+                      <Checkbox
+                        checked={selectedTables.includes(String(table.id))}
+                        onChange={(e) => handleTableSelection(e, table.id)}
+                        name={`table-${table.id}`}
+                      />
+                    }
                     label={
                       <>
-                        {`Table ID: ${table.id}, Capacity: ${table.capacity}, Status: ${table.status}`}
+                        {`Table ID: ${table.id}, Name: ${table.name || 'Unnamed'}, Capacity: ${table.capacity}, Status: ${table.status}`}
                         {table.time_seated && (
                           <>, Seated At: {new Date(table.time_seated).toLocaleTimeString()}</>
                         )}
@@ -193,7 +284,7 @@ function AdminDashboard() {
                     color="primary"
                     style={{ marginLeft: 8 }}
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent radio selection when clicking this button
+                      e.stopPropagation(); // Prevent checkbox selection when clicking this button
                       updateTableStatus(
                         table.id,
                         table.status === 'vacant' ? 'occupied' : 'vacant'
@@ -202,9 +293,33 @@ function AdminDashboard() {
                   >
                     Mark as {table.status === 'vacant' ? 'Occupied' : 'Vacant'}
                   </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="secondary"
+                    style={{ marginLeft: 8 }}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent checkbox selection when clicking this button
+                      handleEditTable(table);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    style={{ marginLeft: 8 }}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent checkbox selection when clicking this button
+                      handleDeleteTable(table.id);
+                    }}
+                  >
+                    Delete
+                  </Button>
                 </Box>
               ))}
-            </RadioGroup>
+            </FormGroup>
           </FormControl>
         </Paper>
 
@@ -214,9 +329,9 @@ function AdminDashboard() {
             variant="contained"
             color="secondary"
             onClick={allocateTable}
-            disabled={!selectedCustomer || !selectedTable}
+            disabled={!selectedCustomer || selectedTables.length === 0}
           >
-            Allocate Table
+            Allocate Tables
           </Button>
           {message && (
             <Typography color="error" style={{ marginTop: 16 }}>
@@ -238,11 +353,19 @@ function AdminDashboard() {
             alignItems="center"
           >
             <TextField
+              type="text"
+              label="Table Name"
+              value={newTableName}
+              onChange={(e) => setNewTableName(e.target.value)}
+              required
+            />
+            <TextField
               type="number"
               label="Table Capacity"
               value={newTableCapacity}
               onChange={(e) => setNewTableCapacity(e.target.value)}
               required
+              style={{ marginLeft: 16 }}
             />
             <Button
               variant="contained"
@@ -254,7 +377,70 @@ function AdminDashboard() {
             </Button>
           </Box>
         </Paper>
+
       </Stack>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={cancelDeleteTable}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">Delete Table</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to delete this table?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDeleteTable} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={confirmDeleteTable} color="secondary" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Table Dialog */}
+      <Dialog
+        open={editDialogOpen}
+        onClose={cancelEditTable}
+        aria-labelledby="edit-dialog-title"
+        aria-describedby="edit-dialog-description"
+      >
+        <DialogTitle id="edit-dialog-title">Edit Table</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="edit-dialog-description">
+            Edit the table's name and capacity.
+          </DialogContentText>
+          <TextField
+            margin="dense"
+            label="Table Name"
+            type="text"
+            fullWidth
+            value={editTableName}
+            onChange={(e) => setEditTableName(e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="Capacity"
+            type="number"
+            fullWidth
+            value={editTableCapacity}
+            onChange={(e) => setEditTableCapacity(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelEditTable} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={confirmEditTable} color="secondary" autoFocus>
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
