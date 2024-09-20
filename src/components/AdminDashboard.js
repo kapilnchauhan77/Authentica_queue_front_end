@@ -61,7 +61,6 @@ function AdminDashboard() {
   headers: {
     'ngrok-skip-browser-warning': 'true',
   },});
-      console.log(response)
       setQueue(response.data);
     } catch (error) {
       console.error('Error fetching queue', error);
@@ -91,9 +90,10 @@ function AdminDashboard() {
     }
   
     try {
-      await axios.put(`https://your-ngrok-url.ngrok.io/api/admin/tables/${tableToEdit.id}`, {
+      await axios.put(`https://unicorn-first-oyster.ngrok-free.app/api/admin/tables/${tableToEdit.id}`, {
         name: editTableName,
         capacity: parseInt(editTableCapacity),
+        status: 'vacant',
       }, {
         headers: {
           'ngrok-skip-browser-warning': 'true',
@@ -160,6 +160,7 @@ function AdminDashboard() {
 
     try {
       const response = await axios.post('https://unicorn-first-oyster.ngrok-free.app/api/admin/tables', {
+        name: newTableName,
         capacity: parseInt(newTableCapacity),
       }, {
   headers: {
@@ -196,7 +197,7 @@ function AdminDashboard() {
 
   const confirmDeleteTable = async () => {
     try {
-      await axios.delete(`https://your-ngrok-url.ngrok.io/api/admin/tables/${tableToDelete}`, {
+      await axios.delete(`https://unicorn-first-oyster.ngrok-free.app/api/admin/tables/${tableToDelete}`, {
         headers: {
           'ngrok-skip-browser-warning': 'true',
         },
@@ -271,7 +272,7 @@ function AdminDashboard() {
                     }
                     label={
                       <>
-                        {`Table ID: ${table.id}, Name: ${table.name || 'Unnamed'}, Capacity: ${table.capacity}, Status: ${table.status}`}
+                        {`${table.name || 'Unnamed'}, C: ${table.capacity}, ${table.status}`}
                         {table.time_seated && (
                           <>, Seated At: {new Date(table.time_seated).toLocaleTimeString()}</>
                         )}
