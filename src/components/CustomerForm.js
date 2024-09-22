@@ -1,4 +1,3 @@
-
 // src/components/CustomerForm.js
 
 import React, { useState } from 'react';
@@ -47,7 +46,7 @@ function CustomerForm() {
     try {
       const reservationTimeToSend =
         reservationTimeOption === 'now'
-          ? dayjs().tz('Asia/Kolkata').toISOString()
+          ? "now"
           : reservationTime.toISOString();
 
       const response = await axios.post('https://unicorn-first-oyster.ngrok-free.app/api/queue', {
